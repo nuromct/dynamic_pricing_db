@@ -141,12 +141,36 @@
                     <h3>Stock Status</h3>
                     <canvas id="inventoryChart"></canvas>
                 </div>
+                <div class="chart-card" style="grid-column: span 2;">
+                    <h3>Top Revenue Suppliers</h3>
+                    <canvas id="supplierRevenueChart" style="max-height: 400px;"></canvas>
+                </div>
+                <div class="chart-card" style="grid-column: span 2;">
+                    <h3>Monthly Revenue Growth</h3>
+                    <canvas id="monthlyRevenueChart" style="max-height: 400px;"></canvas>
+                </div>
             </div>
 
             <div class="table-card">
                 <h3>⚠️ Low Stock Products</h3>
                 <ul class="list-group" id="low-stock-list">
                 </ul>
+            </div>
+            <div class="table-card" style="margin-top: 1.5rem;">
+                <h3>💎 VIP Customers (Gold List)</h3>
+                <table class="table" id="vip-users-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Customer</th>
+                            <th>Email</th>
+                            <th>Orders</th>
+                            <th>Total Spent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
             </div>
         </section>
 
@@ -209,6 +233,9 @@
                     </thead>
                     <tbody></tbody>
                 </table>
+                <div id="orders-pagination"
+                    style="display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; align-items: center;">
+                </div>
             </div>
         </section>
 

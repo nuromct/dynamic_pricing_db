@@ -148,7 +148,7 @@ async function loadDashboard() {
         renderCategoryChart(categories);
     }
 
-    const lowStock = await fetchAPI('/inventory/low-stock');
+    const lowStock = await fetchAPI('/inventory/low-stock?limit=5');
     if (lowStock) {
         const list = document.getElementById('low-stock-list');
         if (list) {
@@ -165,6 +165,140 @@ async function loadDashboard() {
     if (inventory && inventory.length > 0) {
         renderInventoryChart(inventory);
     }
+
+    const supplierRevenue = await fetchAPI('/dashboard/supplier-revenue');
+    if (supplierRevenue && supplierRevenue.length > 0) {
+        renderSupplierRevenueChart(supplierRevenue);
+    }
+    const monthlyRevenue = await fetchAPI('/dashboard/monthly-revenue');
+    if (monthlyRevenue && monthlyRevenue.length > 0) {
+        renderMonthlyRevenueChart(monthlyRevenue);
+    }
+
+    const vipUsers = await fetchAPI('/dashboard/vip-users');
+    if (vipUsers && vipUsers.length > 0) {
+        renderVipUsers(vipUsers);
+    }
+}
+
+function renderVipUsers(data) {
+    const tbody = document.querySelector('#vip-users-table tbody');
+    if (!tbody) return;
+
+    const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+    tbody.innerHTML = data.map((u, i) => `
+        <tr>
+            <td>${medals[i] || (i + 1)}</td>
+            <td><strong>${u.fullname}</strong></td>
+            <td style="color: #94a3b8;">${u.email}</td>
+            <td>${u.order_count}</td>
+            <td style="color: #10b981; font-weight: bold;">₺${Number(u.total_spent).toLocaleString()}</td>
+        </tr>
+    `).join('');
+}
+
+let monthlyRevenueChart = null;
+
+function renderMonthlyRevenueChart(data) {
+    const ctx = document.getElementById('monthlyRevenueChart');
+    if (!ctx) return;
+
+    if (monthlyRevenueChart) monthlyRevenueChart.destroy();
+
+    monthlyRevenueChart = new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: data.map(d => d.month).reverse(),
+            datasets: [{
+                label: 'Monthly Revenue (₺)',
+                data: data.map(d => d.revenue).reverse(),
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return `Revenue: ₺${Number(context.raw).toLocaleString()}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: {
+                        callback: function (value) {
+                            return '₺' + value.toLocaleString();
+                        }
+                    }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+}
+
+let supplierRevenueChart = null;
+
+function renderSupplierRevenueChart(data) {
+    const ctx = document.getElementById('supplierRevenueChart');
+    if (!ctx) return;
+
+    if (supplierRevenueChart) supplierRevenueChart.destroy();
+
+    supplierRevenueChart = new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.companyname),
+            datasets: [{
+                label: 'Total Revenue (₺)',
+                data: data.map(d => d.total_revenue),
+                backgroundColor: [
+                    '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'
+                ],
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return `Revenue: ₺${Number(context.raw).toLocaleString()}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: {
+                        callback: function (value) {
+                            return '₺' + value.toLocaleString();
+                        }
+                    }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
 }
 
 function renderInventoryChart(data) {
@@ -423,13 +557,17 @@ async function editStock(productId, currentStock) {
     }
 }
 
-async function loadOrders() {
-    const data = await fetchAPI('/orders');
-    if (data) {
+let currentOrderPage = 1;
+
+async function loadOrders(page = 1) {
+    currentOrderPage = page;
+    const data = await fetchAPI(`/orders?page=${page}&limit=50`);
+
+    if (data && data.orders) {
         const tbody = document.querySelector('#orders-table tbody');
         if (!tbody) return;
 
-        tbody.innerHTML = data.map(o => `
+        tbody.innerHTML = data.orders.map(o => `
             <tr>
                 <td>${o.orderid}</td>
                 <td>${o.customer_name}</td>
@@ -445,7 +583,32 @@ async function loadOrders() {
                 <td>₺${o.totalamount}</td>
             </tr>
         `).join('');
+
+        renderPagination(data.page, data.total_pages);
     }
+}
+
+function renderPagination(currentPage, totalPages) {
+    const container = document.getElementById('orders-pagination');
+    if (!container) return;
+
+    let html = '';
+
+    if (currentPage > 1) {
+        html += `<button class="btn btn-primary btn-sm" onclick="changeOrderPage(${currentPage - 1})">Previous</button>`;
+    }
+
+    html += `<span style="color: #94a3b8;">Page ${currentPage} of ${totalPages}</span>`;
+
+    if (currentPage < totalPages) {
+        html += `<button class="btn btn-primary btn-sm" onclick="changeOrderPage(${currentPage + 1})">Next</button>`;
+    }
+
+    container.innerHTML = html;
+}
+
+function changeOrderPage(page) {
+    loadOrders(page);
 }
 
 async function loadPriceHistory() {

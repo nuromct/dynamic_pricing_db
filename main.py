@@ -357,7 +357,7 @@ async def get_inventory():
     return execute_query(query)
 
 @app.get("/api/inventory/low-stock")
-async def get_low_stock():
+async def get_low_stock(limit: Optional[int] = None):
     query = """
         SELECT i.*, p.title, p.currentprice
         FROM inventory i
@@ -365,7 +365,13 @@ async def get_low_stock():
         WHERE i.stockquantity < i.lowstockthreshold
         ORDER BY i.stockquantity ASC
     """
-    return execute_query(query)
+    params = []
+    
+    if limit:
+        query += " LIMIT %s"
+        params.append(limit)
+        
+    return execute_query(query, tuple(params) if params else None)
 
 @app.put("/api/inventory/{product_id}")
 async def update_inventory(product_id: int, inventory: InventoryUpdate):
@@ -409,7 +415,28 @@ async def get_price_history(product_id: Optional[int] = None):
     return execute_query(query, tuple(params) if params else None)
 
 @app.get("/api/orders")
-async def get_orders(user_id: Optional[int] = None, status: Optional[str] = None):
+async def get_orders(
+    user_id: Optional[int] = None, 
+    status: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100)
+):
+    offset = (page - 1) * limit
+    
+    # Base query for counting
+    count_query = 'SELECT COUNT(*) as total FROM "Order" o WHERE 1=1'
+    count_params = []
+    
+    if user_id:
+        count_query += " AND o.userid = %s"
+        count_params.append(user_id)
+    if status:
+        count_query += " AND o.status = %s"
+        count_params.append(status)
+        
+    total_count = execute_query(count_query, tuple(count_params) if count_params else None)[0]["total"]
+
+    # Main query for fetching data
     query = """
         SELECT o.orderid, o.orderdate, o.status, o.totalamount, o.shippingaddress,
                u.fullname as customer_name,
@@ -435,9 +462,19 @@ async def get_orders(user_id: Optional[int] = None, status: Optional[str] = None
         query += " AND o.status = %s"
         params.append(status)
     
-    query += " ORDER BY o.orderdate DESC"
+    query += " ORDER BY o.orderdate DESC, o.orderid DESC LIMIT %s OFFSET %s"
+    params.append(limit)
+    params.append(offset)
     
-    return execute_query(query, tuple(params) if params else None)
+    orders = execute_query(query, tuple(params) if params else None)
+    
+    return {
+        "orders": orders,
+        "total": total_count,
+        "page": page,
+        "limit": limit,
+        "total_pages": (total_count + limit - 1) // limit
+    }
 
 @app.post("/api/orders")
 async def create_order(order: OrderCreate):
@@ -651,5 +688,45 @@ async def get_price_trends():
         GROUP BY DATE(changedate)
         ORDER BY date DESC
         LIMIT 30
+    """
+    return execute_query(query)
+
+@app.get("/api/dashboard/supplier-revenue")
+async def get_supplier_revenue():
+    query = """
+        SELECT s.companyname, SUM(oi.quantity * oi.unitprice) as total_revenue
+        FROM orderitem oi
+        JOIN product p ON oi.productid = p.productid
+        JOIN supplier s ON p.supplierid = s.supplierid
+        JOIN "Order" o ON oi.orderid = o.orderid
+        WHERE o.status != 'cancelled'
+        GROUP BY s.supplierid, s.companyname
+        ORDER BY total_revenue DESC
+        LIMIT 5
+    """
+    return execute_query(query)
+
+@app.get("/api/dashboard/monthly-revenue")
+async def get_monthly_revenue():
+    query = """
+        SELECT TO_CHAR(orderdate, 'YYYY-MM') as month, SUM(totalamount) as revenue
+        FROM "Order"
+        WHERE status = 'completed'
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT 12
+    """
+    return execute_query(query)
+
+@app.get("/api/dashboard/vip-users")
+async def get_vip_users():
+    query = """
+        SELECT u.fullname, u.email, COUNT(o.orderid) as order_count, SUM(o.totalamount) as total_spent
+        FROM "User" u
+        JOIN "Order" o ON u.userid = o.userid
+        WHERE o.status = 'completed'
+        GROUP BY u.userid, u.fullname, u.email
+        ORDER BY total_spent DESC
+        LIMIT 5
     """
     return execute_query(query)
