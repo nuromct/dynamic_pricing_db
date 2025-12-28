@@ -1,10 +1,3 @@
--- ============================================
--- DYNAMIC PRICING AND INVENTORY MANAGEMENT SYSTEM
--- PostgreSQL Database Schema
--- ============================================
-
--- 1. USER TABLOSU
--- Sistemdeki tüm kullanıcılar (müşteri, satıcı, admin)
 CREATE TABLE "User" (
     UserID SERIAL PRIMARY KEY,
     FullName VARCHAR(100) NOT NULL,
@@ -15,16 +8,12 @@ CREATE TABLE "User" (
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. CATEGORY TABLOSU
--- Ürün kategorileri
 CREATE TABLE Category (
     CategoryID SERIAL PRIMARY KEY,
     CategoryName VARCHAR(100) NOT NULL,
     Description TEXT
 );
 
--- 3. SUPPLIER TABLOSU
--- Tedarikçi şirketler
 CREATE TABLE Supplier (
     SupplierID SERIAL PRIMARY KEY,
     CompanyName VARCHAR(100) NOT NULL,
@@ -33,8 +22,6 @@ CREATE TABLE Supplier (
     Address TEXT
 );
 
--- 4. PRODUCT TABLOSU
--- Satılan ürünler
 CREATE TABLE Product (
     ProductID SERIAL PRIMARY KEY,
     Title VARCHAR(200) NOT NULL,
@@ -46,8 +33,6 @@ CREATE TABLE Product (
     SupplierID INTEGER REFERENCES Supplier(SupplierID)
 );
 
--- 5. INVENTORY TABLOSU
--- Her ürünün stok bilgisi
 CREATE TABLE Inventory (
     InventoryID SERIAL PRIMARY KEY,
     ProductID INTEGER UNIQUE REFERENCES Product(ProductID),
@@ -57,19 +42,15 @@ CREATE TABLE Inventory (
     LastRestockDate DATE
 );
 
--- 6. PRICEHISTORY TABLOSU
--- Fiyat değişikliği geçmişi (dinamik fiyatlandırma için)
 CREATE TABLE PriceHistory (
     HistoryID SERIAL PRIMARY KEY,
     ProductID INTEGER REFERENCES Product(ProductID),
     OldPrice DECIMAL(10, 2) NOT NULL,
     NewPrice DECIMAL(10, 2) NOT NULL,
     ChangeDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    Reason VARCHAR(50) -- 'low_stock', 'campaign', 'demand_increase' vb.
+    Reason VARCHAR(50) 
 );
 
--- 7. ORDER TABLOSU
--- Siparişler
 CREATE TABLE "Order" (
     OrderID SERIAL PRIMARY KEY,
     UserID INTEGER REFERENCES "User"(UserID),
@@ -79,8 +60,6 @@ CREATE TABLE "Order" (
     ShippingAddress TEXT NOT NULL
 );
 
--- 8. ORDERITEM TABLOSU
--- Siparişteki her ürün detayı (Many-to-Many ilişkisi için)
 CREATE TABLE OrderItem (
     ItemID SERIAL PRIMARY KEY,
     OrderID INTEGER REFERENCES "Order"(OrderID),
@@ -89,9 +68,6 @@ CREATE TABLE OrderItem (
     UnitPrice DECIMAL(10, 2) NOT NULL
 );
 
--- ============================================
--- INDEXLER (Performans için)
--- ============================================
 CREATE INDEX idx_product_category ON Product(CategoryID);
 CREATE INDEX idx_product_supplier ON Product(SupplierID);
 CREATE INDEX idx_order_user ON "Order"(UserID);

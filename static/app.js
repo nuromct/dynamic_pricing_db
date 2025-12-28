@@ -1,34 +1,22 @@
-// ============================================
-// DYNAMIC PRICING DASHBOARD - JavaScript
-// ============================================
 
 const API_BASE = '/api';
 
-// Global chart instances
 let categoryChart = null;
 let inventoryChart = null;
 
-// ============================================
-// NAVIGATION
-// ============================================
-
 document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
-        // Update active nav
         document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
 
-        // Show page
         const pageName = item.dataset.page;
         showPage(pageName);
     });
 });
 
 function showPage(pageName) {
-    // Hide all pages
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
-    // Show selected page
     const page = document.getElementById(`${pageName}-page`);
     if (page) {
         page.classList.add('active');
@@ -40,19 +28,15 @@ function showPage(pageName) {
 function getPageTitle(pageName) {
     const titles = {
         'dashboard': 'Dashboard',
-        'products': 'Ürünler',
-        'inventory': 'Stok Yönetimi',
-        'orders': 'Siparişler',
-        'price-history': 'Fiyat Geçmişi',
-        'users': 'Kullanıcılar',
-        'suppliers': 'Tedarikçiler'
+        'products': 'Products',
+        'inventory': 'Stock Management',
+        'orders': 'Orders',
+        'price-history': 'Price History',
+        'users': 'Users',
+        'suppliers': 'Suppliers'
     };
     return titles[pageName] || pageName;
 }
-
-// ============================================
-// API CALLS
-// ============================================
 
 async function fetchAPI(endpoint) {
     try {
@@ -76,13 +60,13 @@ async function postAPI(endpoint, data) {
         const result = await response.json();
         console.log('POST Response:', result);
         if (!response.ok) {
-            alert('Hata: ' + (result.detail || JSON.stringify(result)));
+            alert('Error: ' + (result.detail || JSON.stringify(result)));
             return null;
         }
         return result;
     } catch (error) {
         console.error('API Error:', error);
-        alert('API Hatası: ' + error.message);
+        alert('API Error: ' + error.message);
         return null;
     }
 }
@@ -97,13 +81,13 @@ async function putAPI(endpoint, data) {
         });
         const result = await response.json();
         if (!response.ok) {
-            alert('Hata: ' + (result.detail || JSON.stringify(result)));
+            alert('Error: ' + (result.detail || JSON.stringify(result)));
             return null;
         }
         return result;
     } catch (error) {
         console.error('API Error:', error);
-        alert('API Hatası: ' + error.message);
+        alert('API Error: ' + error.message);
         return null;
     }
 }
@@ -113,20 +97,16 @@ async function deleteAPI(endpoint) {
         const response = await fetch(`${API_BASE}${endpoint}`, { method: 'DELETE' });
         const result = await response.json();
         if (!response.ok) {
-            alert('Hata: ' + (result.detail || JSON.stringify(result)));
+            alert('Error: ' + (result.detail || JSON.stringify(result)));
             return null;
         }
         return result;
     } catch (error) {
         console.error('API Error:', error);
-        alert('API Hatası: ' + error.message);
+        alert('API Error: ' + error.message);
         return null;
     }
 }
-
-// ============================================
-// PAGE DATA LOADERS
-// ============================================
 
 function loadPageData(pageName) {
     switch (pageName) {
@@ -154,12 +134,7 @@ function loadPageData(pageName) {
     }
 }
 
-// ============================================
-// DASHBOARD
-// ============================================
-
 async function loadDashboard() {
-    // Load stats
     const stats = await fetchAPI('/dashboard/stats');
     if (stats) {
         document.getElementById('stat-products').textContent = stats.total_products;
@@ -168,13 +143,11 @@ async function loadDashboard() {
         document.getElementById('stat-revenue').textContent = `₺${stats.total_revenue.toLocaleString()}`;
     }
 
-    // Load category chart
     const categories = await fetchAPI('/dashboard/category-distribution');
     if (categories && categories.length > 0) {
         renderCategoryChart(categories);
     }
 
-    // Low stock warnings
     const lowStock = await fetchAPI('/inventory/low-stock');
     if (lowStock) {
         const list = document.getElementById('low-stock-list');
@@ -182,13 +155,12 @@ async function loadDashboard() {
             list.innerHTML = lowStock.map(i => `
                 <li class="list-group-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; margin-bottom: 0.5rem; background: #1e293b; border-radius: 8px;">
                     <span style="flex: 1; margin-right: 1rem;">${i.title}</span>
-                    <span class="badge badge-danger" style="white-space: nowrap;">${i.stockquantity} Adet</span>
+                    <span class="badge badge-danger" style="white-space: nowrap;">${i.stockquantity} Items</span>
                 </li>
             `).join('');
         }
     }
 
-    // Load inventory chart (stok durumu)
     const inventory = await fetchAPI('/inventory');
     if (inventory && inventory.length > 0) {
         renderInventoryChart(inventory);
@@ -201,7 +173,6 @@ function renderInventoryChart(data) {
 
     if (inventoryChart) inventoryChart.destroy();
 
-    // Büyükten küçüğe sırala - TÜM ürünler
     const sortedData = [...data].sort((a, b) => b.stockquantity - a.stockquantity);
 
     inventoryChart = new Chart(ctx.getContext('2d'), {
@@ -209,12 +180,12 @@ function renderInventoryChart(data) {
         data: {
             labels: sortedData.map(d => d.title.length > 10 ? d.title.substring(0, 10) + '...' : d.title),
             datasets: [{
-                label: 'Stok Adedi',
+                label: 'Stock Quantity',
                 data: sortedData.map(d => d.stockquantity),
                 backgroundColor: sortedData.map(d => {
-                    if (d.stockquantity < d.lowstockthreshold) return '#ef4444'; // kırmızı - düşük
-                    if (d.stockquantity > d.highstockthreshold) return '#22c55e'; // yeşil - yüksek
-                    return '#f59e0b'; // sarı - normal
+                    if (d.stockquantity < d.lowstockthreshold) return '#ef4444';
+                    if (d.stockquantity > d.highstockthreshold) return '#22c55e';
+                    return '#f59e0b';
                 }),
                 borderRadius: 4
             }]
@@ -228,10 +199,10 @@ function renderInventoryChart(data) {
                     callbacks: {
                         title: function (context) {
                             const index = context[0].dataIndex;
-                            return sortedData[index].title; // Tam ürün adı
+                            return sortedData[index].title;
                         },
                         label: function (context) {
-                            return `Stok: ${context.raw} adet`;
+                            return `Stock: ${context.raw} items`;
                         }
                     }
                 }
@@ -250,7 +221,7 @@ function renderInventoryChart(data) {
                     grid: { color: 'rgba(255,255,255,0.1)' },
                     title: {
                         display: true,
-                        text: 'Stok Adedi'
+                        text: 'Stock Quantity'
                     }
                 }
             }
@@ -285,10 +256,6 @@ function renderCategoryChart(data) {
     });
 }
 
-// ============================================
-// PRODUCTS
-// ============================================
-
 async function loadProducts(search = '', category_id = '') {
     let url = '/products';
     const params = [];
@@ -318,7 +285,7 @@ async function loadProducts(search = '', category_id = '') {
                 </td>
                 <td>
                     <button class="btn btn-primary btn-small" onclick="showPriceChart(${p.productid}, '${p.title.replace(/'/g, "\\'")}')">📈</button>
-                    <button class="btn btn-danger btn-small" onclick="deleteProduct(${p.productid})">Sil</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteProduct(${p.productid})">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -332,51 +299,48 @@ function getStockBadge(stock) {
 }
 
 async function showAddProductModal() {
-    // Kategorileri ve tedarikçileri getir
     const categories = await fetchAPI('/categories');
     const suppliers = await fetchAPI('/suppliers');
 
-    // Modal içini doldur
-    document.getElementById('modal-title').textContent = 'Yeni Ürün Ekle';
+    document.getElementById('modal-title').textContent = 'Add New Product';
     document.getElementById('modal-body').innerHTML = `
         <form id="product-form">
             <div class="form-group">
-                <label>Ürün Adı</label>
+                <label>Product Name</label>
                 <input type="text" name="title" required>
             </div>
             <div class="form-group">
-                <label>Açıklama</label>
+                <label>Description</label>
                 <textarea name="description"></textarea>
             </div>
             <div class="form-group">
-                <label>Kategori</label>
+                <label>Category</label>
                 <select name="category_id">
-                    <option value="">Seçiniz</option>
+                    <option value="">Select</option>
                     ${(categories || []).map(c => `<option value="${c.categoryid}">${c.categoryname}</option>`).join('')}
                 </select>
             </div>
             <div class="form-group">
-                <label>Tedarikçi</label>
+                <label>Supplier</label>
                 <select name="supplier_id">
-                    <option value="">Seçiniz</option>
+                    <option value="">Select</option>
                     ${(suppliers || []).map(s => `<option value="${s.supplierid}">${s.companyname}</option>`).join('')}
                 </select>
             </div>
             <div class="row">
                 <div class="form-group">
-                    <label>Taban Fiyat</label>
+                    <label>Base Price</label>
                     <input type="number" name="base_price" step="0.01" required>
                 </div>
                 <div class="form-group">
-                    <label>Satış Fiyatı</label>
+                    <label>Sale Price</label>
                     <input type="number" name="current_price" step="0.01" required>
                 </div>
             </div>
-            <button type="submit" class="btn btn-success">Kaydet</button>
+            <button type="submit" class="btn btn-success">Save</button>
         </form>
     `;
 
-    // Submit olayı
     document.getElementById('product-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -394,7 +358,7 @@ async function showAddProductModal() {
         const result = await postAPI('/products', data);
         if (result) {
             closeModal();
-            alert('Ürün başarıyla eklendi!');
+            alert('Product added successfully!');
             loadProducts();
             loadDashboard();
         }
@@ -404,18 +368,14 @@ async function showAddProductModal() {
 }
 
 async function deleteProduct(productId) {
-    if (!confirm('Bu ürünü silmek istediğinize emin misiniz?')) return;
+    if (!confirm('Are you sure you want to delete this product?')) return;
 
     const result = await deleteAPI(`/products/${productId}`);
     if (result) {
-        alert('Ürün silindi.');
+        alert('Product deleted.');
         loadProducts();
     }
 }
-
-// ============================================
-// INVENTORY
-// ============================================
 
 async function loadInventory() {
     const data = await fetchAPI('/inventory');
@@ -434,7 +394,7 @@ async function loadInventory() {
                 <td>${i.highstockthreshold}</td>
                 <td>${i.lastrestockdate || '-'}</td>
                 <td>
-                    <button class="btn btn-primary btn-small" onclick="editStock(${i.productid}, ${i.stockquantity})">Düzenle</button>
+                    <button class="btn btn-primary btn-small" onclick="editStock(${i.productid}, ${i.stockquantity})">Edit</button>
                 </td>
             </tr>
         `).join('');
@@ -448,10 +408,10 @@ function getStatusBadge(status) {
 }
 
 async function editStock(productId, currentStock) {
-    const newStock = prompt('Yeni stok adedi:', currentStock);
+    const newStock = prompt('New stock quantity:', currentStock);
     if (newStock !== null) {
         const qty = parseInt(newStock);
-        if (isNaN(qty)) return alert('Geçersiz sayı');
+        if (isNaN(qty)) return alert('Invalid number');
 
         await putAPI(`/inventory/${productId}`, {
             stock_quantity: qty,
@@ -462,10 +422,6 @@ async function editStock(productId, currentStock) {
         loadDashboard();
     }
 }
-
-// ============================================
-// ORDERS
-// ============================================
 
 async function loadOrders() {
     const data = await fetchAPI('/orders');
@@ -492,10 +448,6 @@ async function loadOrders() {
     }
 }
 
-// ============================================
-// PRICE HISTORY
-// ============================================
-
 async function loadPriceHistory() {
     const data = await fetchAPI('/price-history');
     if (data) {
@@ -505,7 +457,7 @@ async function loadPriceHistory() {
         tbody.innerHTML = data.map(h => {
             const change = ((h.newprice - h.oldprice) / h.oldprice * 100).toFixed(1);
             const isPositive = h.newprice > h.oldprice;
-            const color = isPositive ? '#22c55e' : '#ef4444'; // yeşil: artış, kırmızı: düşüş
+            const color = isPositive ? '#22c55e' : '#ef4444';
             const sign = isPositive ? '+' : '';
 
             return `
@@ -525,19 +477,15 @@ async function loadPriceHistory() {
 
 function getReasonLabel(reason) {
     const labels = {
-        'low_stock': '📉 Düşük Stok (ZAM)',
-        'high_stock': '📈 Yüksek Stok (İNDİRİM)',
-        'campaign': '🏷️ Kampanya',
-        'inflation': '📈 Enflasyon',
-        'demand_increase': '📈 Talep Artışı',
-        'manual_update': '✏️ Manuel'
+        'low_stock': '📉 Low Stock (PRICE INCREASE)',
+        'high_stock': '📈 High Stock (DISCOUNT)',
+        'campaign': '🏷️ Campaign',
+        'inflation': '📈 Inflation',
+        'demand_increase': '📈 Demand Increase',
+        'manual_update': '✏️ Manual'
     };
     return labels[reason] || reason;
 }
-
-// ============================================
-// USERS
-// ============================================
 
 async function loadUsers() {
     const data = await fetchAPI('/users');
@@ -557,7 +505,7 @@ async function loadUsers() {
                 </td>
                 <td>${user.phonenumber || '-'}</td>
                 <td>
-                    <button class="btn btn-danger btn-small" onclick="deleteUser(${user.userid})">Sil</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteUser(${user.userid})">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -575,25 +523,21 @@ function getRoleBadgeClass(role) {
 function getRoleLabel(role) {
     switch (role) {
         case 'admin': return 'Admin';
-        case 'seller': return 'Satıcı';
-        case 'customer': return 'Müşteri';
+        case 'seller': return 'Seller';
+        case 'customer': return 'Customer';
         default: return role;
     }
 }
 
 async function deleteUser(userId) {
-    if (!confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')) return;
+    if (!confirm('Are you sure you want to delete this user?')) return;
 
     const result = await deleteAPI(`/users/${userId}`);
     if (result) {
-        alert('Kullanıcı silindi.');
+        alert('User deleted.');
         loadUsers();
     }
 }
-
-// ============================================
-// SUPPLIERS
-// ============================================
 
 async function loadSuppliers() {
     const data = await fetchAPI('/suppliers');
@@ -610,7 +554,7 @@ async function loadSuppliers() {
                 <td>${s.address || '-'}</td>
                 <td>${s.product_count || 0}</td>
                 <td>
-                    <button class="btn btn-danger btn-small" onclick="deleteSupplier(${s.supplierid})">Sil</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteSupplier(${s.supplierid})">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -618,31 +562,22 @@ async function loadSuppliers() {
 }
 
 async function deleteSupplier(supplierId) {
-    if (!confirm('Bu tedarikçiyi silmek istediğinize emin misiniz?')) return;
+    if (!confirm('Are you sure you want to delete this supplier?')) return;
 
     const result = await deleteAPI(`/suppliers/${supplierId}`);
     if (result) {
-        alert('Tedarikçi silindi.');
+        alert('Supplier deleted.');
         loadSuppliers();
     }
 }
-
-// ============================================
-// MODAL
-// ============================================
 
 function closeModal() {
     document.getElementById('modal').classList.remove('active');
 }
 
-// Close modal on outside click
 document.getElementById('modal').addEventListener('click', (e) => {
     if (e.target.id === 'modal') closeModal();
 });
-
-// ============================================
-// REFRESH BUTTON
-// ============================================
 
 document.getElementById('refresh-btn').addEventListener('click', () => {
     const activeNav = document.querySelector('.nav-item.active');
@@ -651,29 +586,25 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
     }
 });
 
-// ============================================
-// CAMPAIGNS & ADVANCED CHARTS
-// ============================================
-
 async function showCampaignModal() {
     const categories = await fetchAPI('/categories');
 
     document.getElementById('campaign-modal-body').innerHTML = `
     <form id="campaign-form">
         <div class="form-group">
-            <label>Kategori Seçin</label>
+            <label>Select Category</label>
             <select name="category_id" required>
                 ${(categories || []).map(c => `<option value="${c.categoryid}">${c.categoryname}</option>`).join('')}
             </select>
         </div>
         <div class="form-group">
-            <label>İndirim Oranı (%)</label>
+            <label>Discount Rate (%)</label>
             <input type="number" name="discount" min="1" max="99" value="10" required>
         </div>
         <div class="alert alert-info">
-            Dikkat: Seçilen kategorideki tüm ürünlerin fiyatı düşürülecektir.
+            Warning: The price of all products in the selected category will be reduced.
         </div>
-        <button type="submit" class="btn btn-primary" style="width:100%">Kampanyayı Uygula 🚀</button>
+        <button type="submit" class="btn btn-primary" style="width:100%">Apply Campaign 🚀</button>
     </form>
 `;
 
@@ -701,22 +632,20 @@ function closeCampaignModal() {
     document.getElementById('campaign-modal').classList.remove('active');
 }
 
-// Price History Chart
 let productPriceChart = null;
 
 async function showPriceChart(productId, productName) {
     const history = await fetchAPI(`/price-history?product_id=${productId}`);
     if (!history || history.length === 0) {
-        alert('Bu ürün için fiyat geçmişi bulunamadı.');
+        alert('No price history found for this product.');
         return;
     }
 
-    // Veriyi hazırla (Eskiden yeniye sırala)
     const sortedHistory = history.reverse();
     const labels = sortedHistory.map(h => new Date(h.changedate).toLocaleDateString());
     const data = sortedHistory.map(h => h.newprice);
 
-    document.getElementById('chart-modal-title').textContent = `${productName} - Fiyat Geçmişi`;
+    document.getElementById('chart-modal-title').textContent = `${productName} - Price History`;
     document.getElementById('chart-modal').classList.add('active');
 
     const ctx = document.getElementById('productPriceChart').getContext('2d');
@@ -728,7 +657,7 @@ async function showPriceChart(productId, productName) {
         data: {
             labels: labels,
             datasets: [{
-                label: 'Fiyat (₺)',
+                label: 'Price (₺)',
                 data: data,
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -749,15 +678,10 @@ function closeChartModal() {
     document.getElementById('chart-modal').classList.remove('active');
 }
 
-// Close modals on outside click
 window.addEventListener('click', (e) => {
     if (e.target.id === 'campaign-modal') closeCampaignModal();
     if (e.target.id === 'chart-modal') closeChartModal();
 });
-
-// ============================================
-// SUPPLIERS
-// ============================================
 
 let currentSuppliers = [];
 
@@ -777,8 +701,8 @@ async function loadSuppliers() {
                 <td style="max-width: 200px; font-size: 0.85rem;">${s.address || '-'}</td>
                 <td>${s.product_count || 0}</td>
                 <td>
-                    <button class="btn btn-sm btn-warning" onclick="editSupplier(${s.supplierid})">Düzenle</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteSupplier(${s.supplierid})">Sil</button>
+                    <button class="btn btn-sm btn-warning" onclick="editSupplier(${s.supplierid})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteSupplier(${s.supplierid})">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -786,12 +710,12 @@ async function loadSuppliers() {
 }
 
 async function addSupplier() {
-    const companyName = prompt('Şirket Adı:');
+    const companyName = prompt('Company Name:');
     if (!companyName) return;
 
-    const contactEmail = prompt('İletişim Email:');
-    const taxNumber = prompt('Vergi Numarası:');
-    const address = prompt('Adres:');
+    const contactEmail = prompt('Contact Email:');
+    const taxNumber = prompt('Tax Number:');
+    const address = prompt('Address:');
 
     const result = await postAPI('/suppliers', {
         company_name: companyName,
@@ -799,51 +723,4 @@ async function addSupplier() {
         tax_number: taxNumber || null,
         address: address || null
     });
-
-    if (result) {
-        alert('Tedarikçi eklendi!');
-        loadSuppliers();
-    }
 }
-
-async function editSupplier(id) {
-    const supplier = currentSuppliers.find(s => s.supplierid === id);
-    if (!supplier) return;
-
-    const companyName = prompt('Şirket Adı:', supplier.companyname);
-    if (!companyName) return;
-
-    const contactEmail = prompt('İletişim Email:', supplier.contactemail || '');
-    const taxNumber = prompt('Vergi Numarası:', supplier.taxnumber || '');
-    const address = prompt('Adres:', supplier.address || '');
-
-    const result = await putAPI(`/suppliers/${id}`, {
-        company_name: companyName,
-        contact_email: contactEmail || null,
-        tax_number: taxNumber || null,
-        address: address || null
-    });
-
-    if (result) {
-        alert('Tedarikçi güncellendi!');
-        loadSuppliers();
-    }
-}
-
-async function deleteSupplier(id) {
-    if (!confirm('Bu tedarikçiyi silmek istediğinizden emin misiniz?')) return;
-
-    const result = await deleteAPI(`/suppliers/${id}`);
-    if (result) {
-        alert('Tedarikçi silindi!');
-        loadSuppliers();
-    }
-}
-
-// ============================================
-// INITIAL LOAD
-// ============================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    loadDashboard();
-});

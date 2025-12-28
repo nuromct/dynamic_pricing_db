@@ -3,11 +3,6 @@ const API_BASE = '/api';
 let cart = [];
 let currentUser = null;
 
-// ============================================
-// AUTH SYSTEM
-// ============================================
-
-// Check if user is logged in on page load
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
 });
@@ -63,11 +58,11 @@ async function handleLogin(event) {
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
             onLoginSuccess();
         } else {
-            errorDiv.textContent = result.detail || 'Giriş başarısız';
+            errorDiv.textContent = result.detail || 'Login failed';
             errorDiv.style.display = 'block';
         }
     } catch (error) {
-        errorDiv.textContent = 'Bağlantı hatası';
+        errorDiv.textContent = 'Connection error';
         errorDiv.style.display = 'block';
     }
 }
@@ -82,7 +77,7 @@ async function handleRegister(event) {
     const errorDiv = document.getElementById('register-error');
 
     if (password.length < 6) {
-        errorDiv.textContent = 'Şifre en az 6 karakter olmalı';
+        errorDiv.textContent = 'Password must be at least 6 characters';
         errorDiv.style.display = 'block';
         return;
     }
@@ -103,16 +98,15 @@ async function handleRegister(event) {
         const result = await response.json();
 
         if (response.ok) {
-            // Auto-login after register
-            alert('Kayıt başarılı! Şimdi giriş yapabilirsiniz.');
+            alert('Registration successful! You can now login.');
             showLogin();
             document.getElementById('login-email').value = email;
         } else {
-            errorDiv.textContent = result.detail || 'Kayıt başarısız';
+            errorDiv.textContent = result.detail || 'Registration failed';
             errorDiv.style.display = 'block';
         }
     } catch (error) {
-        errorDiv.textContent = 'Bağlantı hatası';
+        errorDiv.textContent = 'Connection error';
         errorDiv.style.display = 'block';
     }
 }
@@ -122,10 +116,9 @@ function onLoginSuccess() {
     document.getElementById('user-info').style.display = 'flex';
     document.getElementById('user-display-name').textContent = currentUser.fullname;
 
-    // Show role badge (only for admin and seller)
     const roleBadge = document.getElementById('user-role-badge');
     if (currentUser.role === 'admin' || currentUser.role === 'seller') {
-        const roleLabels = { admin: 'Admin', seller: 'Satıcı' };
+        const roleLabels = { admin: 'Admin', seller: 'Seller' };
         roleBadge.textContent = roleLabels[currentUser.role];
         roleBadge.className = 'role-badge ' + currentUser.role;
         roleBadge.style.display = 'inline';
@@ -133,12 +126,10 @@ function onLoginSuccess() {
         roleBadge.style.display = 'none';
     }
 
-    // Show Dashboard link only for admin
     if (currentUser.role === 'admin') {
         document.getElementById('admin-dashboard-link').style.display = 'inline';
     }
 
-    // Load store data
     loadCategories();
     loadProducts();
 }
@@ -151,10 +142,6 @@ function logout() {
     showAuthOverlay();
     document.getElementById('user-info').style.display = 'none';
 }
-
-// ============================================
-// PRODUCTS
-// ============================================
 
 async function loadProducts(search = '', category = '') {
     try {
@@ -175,7 +162,7 @@ async function loadCategories() {
         const response = await fetch(`${API_BASE}/categories`);
         const categories = await response.json();
         const select = document.getElementById('category-filter');
-        select.innerHTML = '<option value="">Tüm Kategoriler</option>' +
+        select.innerHTML = '<option value="">All Categories</option>' +
             categories.map(c => `<option value="${c.categoryid}">${c.categoryname}</option>`).join('');
 
         select.addEventListener('change', (e) => {
@@ -202,23 +189,19 @@ function renderProducts(products) {
                 <i class="fas fa-box"></i>
             </div>
             <div class="product-info">
-                <span class="product-category">${product.category_name || 'Genel'}</span>
+                <span class="product-category">${product.category_name || 'General'}</span>
                 <h3 class="product-title">${product.title}</h3>
                 <div class="product-details">
                     <span class="price">₺${Number(product.currentprice).toLocaleString()}</span>
                 </div>
                 <button class="add-btn" onclick="addToCart(${product.productid}, '${product.title.replace(/'/g, "\\'")}', ${product.currentprice})">
-                    Sepete Ekle
+                    Add to Cart
                 </button>
             </div>
         </div>
         `;
     }).join('');
 }
-
-// ============================================
-// CART
-// ============================================
 
 function toggleCart() {
     document.getElementById('cart-sidebar').classList.toggle('active');
@@ -251,7 +234,7 @@ function updateCartUI() {
     countEl.textContent = totalQty;
 
     if (cart.length === 0) {
-        container.innerHTML = '<div class="empty-cart">Sepetiniz boş</div>';
+        container.innerHTML = '<div class="empty-cart">Your cart is empty</div>';
     } else {
         container.innerHTML = cart.map(item => `
             <div class="cart-item">
@@ -270,25 +253,21 @@ function updateCartUI() {
     totalEl.textContent = `₺${total.toLocaleString()}`;
 }
 
-// ============================================
-// CHECKOUT
-// ============================================
-
 async function checkout() {
     if (!currentUser) {
-        alert('Lütfen önce giriş yapın!');
+        alert('Please login first!');
         showAuthOverlay();
         return;
     }
 
     if (cart.length === 0) {
-        alert('Sepetiniz boş!');
+        alert('Your cart is empty');
         return;
     }
 
     const address = document.getElementById('shipping-address').value;
     if (!address.trim()) {
-        alert('Lütfen teslimat adresinizi girin!');
+        alert('Please enter your delivery address!');
         return;
     }
 
@@ -311,16 +290,16 @@ async function checkout() {
         const result = await response.json();
 
         if (response.ok) {
-            alert(`Siparişiniz alındı! (Sipariş No: #${result.order_id})\n\nTeşekkürler, ${currentUser.fullname}!`);
+            alert(`Order received! (Order No: #${result.order_id})\n\nThank you, ${currentUser.fullname}!`);
             cart = [];
             updateCartUI();
             toggleCart();
             document.getElementById('shipping-address').value = '';
         } else {
-            alert('Hata: ' + result.detail);
+            alert('Error: ' + result.detail);
         }
     } catch (error) {
         console.error('Checkout error:', error);
-        alert('Sipariş oluşturulurken bir hata oluştu.');
+        alert('An error occurred while creating the order.');
     }
 }

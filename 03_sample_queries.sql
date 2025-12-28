@@ -1,159 +1,110 @@
--- ============================================
--- ÖRNEK SORGULAR (QUERIES)
--- ============================================
-
--- ----------------------------------------
--- 1. TEMEL SELECT SORGULARI
--- ----------------------------------------
-
--- Tüm ürünleri listele
 SELECT * FROM Product;
 
--- Sadece aktif ürünleri listele
 SELECT ProductID, Title, CurrentPrice 
 FROM Product 
 WHERE IsActive = TRUE;
 
--- Fiyatı 1000 TL'den fazla olan ürünler
 SELECT Title, CurrentPrice 
 FROM Product 
 WHERE CurrentPrice > 1000
 ORDER BY CurrentPrice DESC;
 
--- ----------------------------------------
--- 2. JOIN SORGULARI (Tabloları Birleştirme)
--- ----------------------------------------
-
--- Ürünleri kategorileriyle birlikte göster
 SELECT 
-    p.Title AS "Ürün Adı",
-    p.CurrentPrice AS "Fiyat",
-    c.CategoryName AS "Kategori"
+    p.Title AS "Product Name",
+    p.CurrentPrice AS "Price",
+    c.CategoryName AS "Category"
 FROM Product p
 INNER JOIN Category c ON p.CategoryID = c.CategoryID;
 
--- Ürünleri tedarikçileriyle birlikte göster
 SELECT 
-    p.Title AS "Ürün",
-    s.CompanyName AS "Tedarikçi",
-    p.CurrentPrice AS "Fiyat"
+    p.Title AS "Product",
+    s.CompanyName AS "Supplier",
+    p.CurrentPrice AS "Price"
 FROM Product p
 LEFT JOIN Supplier s ON p.SupplierID = s.SupplierID;
 
--- Kullanıcı siparişlerini göster
 SELECT 
-    u.FullName AS "Müşteri",
-    o.OrderID AS "Sipariş No",
-    o.OrderDate AS "Tarih",
-    o.TotalAmount AS "Toplam",
-    o.Status AS "Durum"
+    u.FullName AS "Customer",
+    o.OrderID AS "Order No",
+    o.OrderDate AS "Date",
+    o.TotalAmount AS "Total",
+    o.Status AS "Status"
 FROM "Order" o
 INNER JOIN "User" u ON o.UserID = u.UserID;
 
--- ----------------------------------------
--- 3. STOK SORGULARI (Envanter Yönetimi)
--- ----------------------------------------
-
--- Düşük stoklu ürünleri bul (stok < eşik değeri)
 SELECT 
-    p.Title AS "Ürün",
-    i.StockQuantity AS "Mevcut Stok",
-    i.LowStockThreshold AS "Minimum Stok"
+    p.Title AS "Product",
+    i.StockQuantity AS "Current Stock",
+    i.LowStockThreshold AS "Minimum Stock"
 FROM Inventory i
 INNER JOIN Product p ON i.ProductID = p.ProductID
 WHERE i.StockQuantity < i.LowStockThreshold;
 
--- Stok durumu özeti
 SELECT 
     p.Title,
     i.StockQuantity,
     CASE 
-        WHEN i.StockQuantity < i.LowStockThreshold THEN 'DÜŞÜK STOK!'
-        WHEN i.StockQuantity > i.HighStockThreshold THEN 'FAZLA STOK'
+        WHEN i.StockQuantity < i.LowStockThreshold THEN 'LOW STOCK!'
+        WHEN i.StockQuantity > i.HighStockThreshold THEN 'OVER STOCK'
         ELSE 'NORMAL'
-    END AS "Stok Durumu"
+    END AS "Stock Status"
 FROM Inventory i
 INNER JOIN Product p ON i.ProductID = p.ProductID;
 
--- ----------------------------------------
--- 4. FİYAT ANALİZİ (Dinamik Fiyatlandırma)
--- ----------------------------------------
-
--- Fiyat değişiklik geçmişi
 SELECT 
-    p.Title AS "Ürün",
-    ph.OldPrice AS "Eski Fiyat",
-    ph.NewPrice AS "Yeni Fiyat",
-    (ph.NewPrice - ph.OldPrice) AS "Fark",
-    ph.Reason AS "Sebep",
-    ph.ChangeDate AS "Tarih"
+    p.Title AS "Product",
+    ph.OldPrice AS "Old Price",
+    ph.NewPrice AS "New Price",
+    (ph.NewPrice - ph.OldPrice) AS "Difference",
+    ph.Reason AS "Reason",
+    ph.ChangeDate AS "Date"
 FROM PriceHistory ph
 INNER JOIN Product p ON ph.ProductID = p.ProductID
 ORDER BY ph.ChangeDate DESC;
 
--- Düşük stok nedeniyle fiyat artan ürünler
 SELECT 
     p.Title,
     ph.OldPrice,
     ph.NewPrice,
-    ROUND(((ph.NewPrice - ph.OldPrice) / ph.OldPrice * 100), 2) AS "Artış %"
+    ROUND(((ph.NewPrice - ph.OldPrice) / ph.OldPrice * 100), 2) AS "Increase %"
 FROM PriceHistory ph
 INNER JOIN Product p ON ph.ProductID = p.ProductID
 WHERE ph.Reason = 'low_stock';
 
--- ----------------------------------------
--- 5. SİPARİŞ ANALİZİ
--- ----------------------------------------
-
--- Sipariş detayları (hangi üründen kaç tane alındı)
 SELECT 
-    o.OrderID AS "Sipariş No",
-    u.FullName AS "Müşteri",
-    p.Title AS "Ürün",
-    oi.Quantity AS "Adet",
-    oi.UnitPrice AS "Birim Fiyat",
-    (oi.Quantity * oi.UnitPrice) AS "Ara Toplam"
+    o.OrderID AS "Order No",
+    u.FullName AS "Customer",
+    p.Title AS "Product",
+    oi.Quantity AS "Qty",
+    oi.UnitPrice AS "Unit Price",
+    (oi.Quantity * oi.UnitPrice) AS "Subtotal"
 FROM OrderItem oi
 INNER JOIN "Order" o ON oi.OrderID = o.OrderID
 INNER JOIN "User" u ON o.UserID = u.UserID
 INNER JOIN Product p ON oi.ProductID = p.ProductID;
 
--- ----------------------------------------
--- 6. AGGREGATE FONKSİYONLAR (Özet İstatistikler)
--- ----------------------------------------
+SELECT COUNT(*) AS "Total Products" FROM Product;
 
--- Toplam ürün sayısı
-SELECT COUNT(*) AS "Toplam Ürün" FROM Product;
+SELECT ROUND(AVG(CurrentPrice), 2) AS "Average Price" FROM Product;
 
--- Ortalama ürün fiyatı
-SELECT ROUND(AVG(CurrentPrice), 2) AS "Ortalama Fiyat" FROM Product;
-
--- Kategori bazında ürün sayısı
 SELECT 
-    c.CategoryName AS "Kategori",
-    COUNT(p.ProductID) AS "Ürün Sayısı",
-    ROUND(AVG(p.CurrentPrice), 2) AS "Ort. Fiyat"
+    c.CategoryName AS "Category",
+    COUNT(p.ProductID) AS "Product Count",
+    ROUND(AVG(p.CurrentPrice), 2) AS "Avg. Price"
 FROM Category c
 LEFT JOIN Product p ON c.CategoryID = p.CategoryID
 GROUP BY c.CategoryID, c.CategoryName;
 
--- Toplam stok değeri
 SELECT 
-    SUM(p.CurrentPrice * i.StockQuantity) AS "Toplam Stok Değeri"
+    SUM(p.CurrentPrice * i.StockQuantity) AS "Total Stock Value"
 FROM Product p
 INNER JOIN Inventory i ON p.ProductID = i.ProductID;
 
--- ----------------------------------------
--- 7. EN ÇOK / EN AZ SORGULARI
--- ----------------------------------------
-
--- En pahalı 3 ürün
 SELECT Title, CurrentPrice 
 FROM Product 
 ORDER BY CurrentPrice DESC 
 LIMIT 3;
 
--- En düşük stoklu ürün
 SELECT 
     p.Title, 
     i.StockQuantity
@@ -162,13 +113,12 @@ INNER JOIN Product p ON i.ProductID = p.ProductID
 ORDER BY i.StockQuantity ASC
 LIMIT 1;
 
--- En çok sipariş veren müşteri
 SELECT 
     u.FullName,
-    COUNT(o.OrderID) AS "Sipariş Sayısı",
-    SUM(o.TotalAmount) AS "Toplam Harcama"
+    COUNT(o.OrderID) AS "Order Count",
+    SUM(o.TotalAmount) AS "Total Spending"
 FROM "User" u
 INNER JOIN "Order" o ON u.UserID = o.UserID
 GROUP BY u.UserID, u.FullName
-ORDER BY "Toplam Harcama" DESC
+ORDER BY "Total Spending" DESC
 LIMIT 1;

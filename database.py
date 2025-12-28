@@ -1,17 +1,16 @@
 """
 Database Connection Module
-PostgreSQL veritabanına bağlantı yönetimi
+PostgreSQL database connection management
 """
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
-# .env dosyasından değişkenleri yükle
 load_dotenv()
 
 def get_db_connection():
-    """Veritabanı bağlantısı oluştur"""
+    """Create database connection"""
     conn = psycopg2.connect(
         host=os.getenv("DB_HOST", "localhost"),
         port=os.getenv("DB_PORT", "5432"),
@@ -23,14 +22,14 @@ def get_db_connection():
     return conn
 
 def execute_query(query: str, params: tuple = None, fetch: bool = True):
-    """SQL sorgusu çalıştır"""
+    """Execute SQL query"""
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         cursor.execute(query, params)
         if fetch:
             result = cursor.fetchall()
-            conn.commit()  # <--- Ekleme: Veri döndüren işlem olsa bile commit et (INSERT RETURNING için)
+            conn.commit() 
         else:
             conn.commit()
             result = cursor.rowcount
