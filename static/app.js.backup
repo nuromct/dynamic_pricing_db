@@ -1,0 +1,619 @@
+// ============================================
+
+// DYNAMIC PRICING DASHBOARD - JavaScript
+
+// ============================================
+
+
+
+const API_BASE = '/api';
+
+
+
+// Global chart instances
+
+let categoryChart = null;
+
+let inventoryChart = null;
+
+
+
+// ============================================
+
+// NAVIGATION
+
+// ============================================
+
+
+
+document.querySelectorAll('.nav-item').forEach(item => {
+
+    item.addEventListener('click', () => {
+
+        // Update active nav
+
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+
+        item.classList.add('active');
+
+
+
+        // Show page
+
+        const pageName = item.dataset.page;
+
+        showPage(pageName);
+
+    });
+
+});
+
+
+
+function showPage(pageName) {
+
+    // Hide all pages
+
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+
+
+    // Show selected page
+
+    const page = document.getElementById(`${pageName}-page`);
+
+    if (page) {
+
+        page.classList.add('active');
+
+        document.getElementById('page-title').textContent = getPageTitle(pageName);
+
+        loadPageData(pageName);
+
+    }
+
+}
+
+
+
+function getPageTitle(pageName) {
+
+    const titles = {
+
+        'dashboard': 'Dashboard',
+
+        'products': 'Ürünler',
+
+        'inventory': 'Stok Yönetimi',
+
+        'orders': 'Siparişler',
+
+        'price-history': 'Fiyat Geçmişi',
+
+        'users': 'Kullanıcılar'
+
+    };
+
+    return titles[pageName] || pageName;
+
+}
+
+
+
+// ============================================
+
+// API CALLS
+
+// ============================================
+
+
+
+async function fetchAPI(endpoint) {
+
+    try {
+
+        const response = await fetch(`${API_BASE}${endpoint}`);
+
+        if (!response.ok) throw new Error('API Error');
+
+        return await response.json();
+
+    } catch (error) {
+
+        console.error('API Error:', error);
+
+        return null;
+
+    }
+
+}
+
+
+
+async function postAPI(endpoint, data) {
+
+    try {
+
+        console.log('POST Request:', endpoint, data);
+
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify(data)
+
+        });
+
+        const result = await response.json();
+
+        console.log('POST Response:', result);
+
+        if (!response.ok) {
+
+            alert('Hata: ' + (result.detail || JSON.stringify(result)));
+
+            return null;
+
+        }
+
+        return result;
+
+    } catch (error) {
+
+        console.error('API Error:', error);
+
+        alert('API Hatası: ' + error.message);
+
+        return null;
+
+    }
+
+}
+
+
+
+async function putAPI(endpoint, data) {
+
+    try {
+
+        console.log('PUT Request:', endpoint, data);
+
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+
+            method: 'PUT',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify(data)
+
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+
+            alert('Hata: ' + (result.detail || JSON.stringify(result)));
+
+            return null;
+
+        }
+
+        return result;
+
+    } catch (error) {
+
+        console.error('API Error:', error);
+
+        alert('API Hatası: ' + error.message);
+
+        return null;
+
+    }
+
+}
+
+
+
+async function deleteAPI(endpoint) {
+
+    try {
+
+        const response = await fetch(`${API_BASE}${endpoint}`, { method: 'DELETE' });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+
+            alert('Hata: ' + (result.detail || JSON.stringify(result)));
+
+            return null;
+
+        }
+
+        return result;
+
+    } catch (error) {
+
+        console.error('API Error:', error);
+
+        alert('API Hatası: ' + error.message);
+
+        return null;
+
+    }
+
+}
+
+
+
+// ============================================
+
+// PAGE DATA LOADERS
+
+// ============================================
+
+
+
+function loadPageData(pageName) {
+
+    switch (pageName) {
+
+        case 'dashboard':
+
+            loadDashboard();
+
+            break;
+
+        case 'products':
+
+            loadProducts();
+
+            break;
+
+        case 'inventory':
+
+            loadInventory();
+
+            break;
+
+        case 'orders':
+
+            loadOrders();
+
+            break;
+
+        case 'price-history':
+
+            loadPriceHistory();
+
+            break;
+
+        case 'users':
+
+            loadUsers();
+
+            break;
+
+    }
+
+}
+
+
+
+// ============================================
+
+// DASHBOARD
+
+// ============================================
+
+
+
+async function loadDashboard() {
+
+    // Load stats
+
+    const stats = await fetchAPI('/dashboard/stats');
+
+    if (stats) {
+
+        document.getElementById('stat-products').textContent = stats.total_products;
+
+        document.getElementById('stat-orders').textContent = stats.total_orders;
+
+        document.getElementById('stat-lowstock').textContent = stats.low_stock_count;
+
+        document.getElementById('stat-revenue').textContent = `₺${stats.total_revenue.toLocaleString()}`;
+
+    }
+
+
+
+    // Load category chart
+
+    const categories = await fetchAPI('/dashboard/category-distribution');
+
+    if (categories && categories.length > 0) {
+
+        renderCategoryChart(categories);
+
+    }
+
+
+
+    // Low stock warnings
+
+    const lowStock = await fetchAPI('/inventory/low-stock');
+
+    if (lowStock) {
+
+        const list = document.getElementById('low-stock-list');
+
+        list.innerHTML = lowStock.map(i => `
+
+            <li class="list-group-item">
+
+                <span>${i.title}</span>
+
+                <span class="badge badge-danger">${i.stockquantity} Adet</span>
+
+            </li>
+
+        `).join('');
+
+    }
+
+}
+
+
+
+function renderCategoryChart(data) {
+
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+
+
+
+    if (categoryChart) categoryChart.destroy();
+
+
+
+    categoryChart = new Chart(ctx, {
+
+        type: 'doughnut',
+
+        data: {
+
+            labels: data.map(d => d.name),
+
+            datasets: [{
+
+                data: data.map(d => d.value),
+
+                backgroundColor: [
+
+                    '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+
+                    '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'
+
+                ]
+
+            }]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            plugins: {
+
+                legend: { position: 'right' }
+
+            }
+
+        }
+
+    });
+
+}
+
+
+
+// ============================================
+
+// PRODUCTS
+
+// ============================================
+
+
+
+async function loadProducts(search = '', category_id = '', is_store = false) {
+
+    let url = '/products';
+
+    const params = [];
+
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+
+    if (category_id) params.push(`category_id=${category_id}`);
+
+    if (params.length > 0) url += '?' + params.join('&');
+
+
+
+    const data = await fetchAPI(url);
+
+    if (data) {
+
+        const tbody = document.querySelector('#products-table tbody');
+
+        tbody.innerHTML = data.map(p => `
+
+            <tr>
+
+                <td>${p.productid}</td>
+
+                <td>
+
+                    <div class="product-info">
+
+                        <strong>${p.title}</strong>
+
+                        <small>${p.description || ''}</small>
+
+                    </div>
+
+                </td>
+
+                <td>₺${p.currentprice}</td>
+
+                <td>${p.categoryname || '-'}</td>
+
+                <td>${p.suppliername || '-'}</td>
+
+                <td>
+
+                    <span class="badge ${p.stock_status === 'LOW' ? 'badge-danger' : (p.stock_status === 'HIGH' ? 'badge-success' : 'badge-warning')}">
+
+                        ${p.stockquantity}
+
+                    </span>
+
+                </td>
+
+                <td>
+
+                    <button class="btn btn-primary btn-small" onclick="showPriceChart(${p.productid}, '${p.title.replace(/'/g, "\\'")}')">📈</button>
+
+                    <button class="btn btn-danger btn-small" onclick="deleteProduct(${p.productid})">Sil</button>
+
+                    
+
+                </td>
+
+            </tr>
+
+        `).join('');
+
+    }
+
+}
+
+
+
+async function showAddProductModal() {
+
+    // Kategorileri ve tedarikçileri getir
+
+    const categories = await fetchAPI('/categories');
+
+    const suppliers = await fetchAPI('/suppliers');
+
+
+
+    // Modal içini doldur
+
+    document.getElementById('modal-title').textContent = 'Yeni Ürün Ekle';
+
+    document.getElementById('modal-body').innerHTML = `
+
+        <form id="product-form">
+
+            <div class="form-group">
+
+                <label>Ürün Adı</label>
+
+                <input type="text" name="title" required>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Açıklama</label>
+
+                <textarea name="description"></textarea>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Kategori</label>
+
+                <select name="category_id">
+
+                    <option value="">Seçiniz</option>
+
+                    ${categories.map(c => `<option value="${c.categoryid}">${c.categoryname}</option>`).join('')}
+
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Tedarikçi</label>
+
+                <select name="supplier_id">
+
+                    <option value="">Seçiniz</option>
+
+                    ${suppliers.map(s => `<option value="${s.supplierid}">${s.companyname}</option>`).join('')}
+
+                </select>
+
+            </div>
+
+            <div class="row">
+
+                <div class="form-group">
+
+                    <label>Taban Fiyat</label>
+
+                    <input type="number" name="base_price" step="0.01" required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Satış Fiyatı</label>
+
+                    <input type="number" name="current_price" step="0.01" required>
+
+                </div>
+
+            </div>
+
+            <button type="submit" class="btn btn-success">Kaydet</button>
+
+        </form>
+
+    `;
+
+
+
+    // Submit olayı
+
+    document.getElementById('product-form').addEventListener('submit', async (e) => {
+
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+
+
+
+        const data = {
+
+            title: formData.get('title'),
+
+            description: formData.get('description'),
+
+            category_id: formData.get('category_id') ? parseInt(formData.get('category_id')) : null,
+
+            supplier_id: formData.get('supplier_id') ? parseInt(formData.get('supplier_id')) : null,
+
+            base_price: parseFloat(formData.get('base_price')),
+
+            current_price: parseFloat(formData.get('current_price')),
+
+            is_active: true

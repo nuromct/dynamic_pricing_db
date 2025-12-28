@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Pricing Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .chart-card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .chart-card h3 {
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .chart-card canvas {
+            max-width: 100%;
+            max-height: 300px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2>💰 Dynamic Pricing</h2>
+            <p>Inventory Management</p>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item active" data-page="dashboard">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </li>
+            <li class="nav-item" data-page="products">
+                <span class="nav-icon">📦</span>
+                <span>Ürünler</span>
+            </li>
+            <li class="nav-item" data-page="inventory">
+                <span class="nav-icon">🏪</span>
+                <span>Stok</span>
+            </li>
+            <li class="nav-item" data-page="orders">
+                <span class="nav-icon">🛒</span>
+                <span>Siparişler</span>
+            </li>
+            <li class="nav-item" data-page="price-history">
+                <span class="nav-icon">📈</span>
+                <span>Fiyat Geçmişi</span>
+            </li>
+            <li class="nav-item" data-page="users">
+                <span class="nav-icon">👥</span>
+                <span>Kullanıcılar</span>
+            </li>
+            <li class="nav-item" data-page="suppliers">
+                <span class="nav-icon">🏭</span>
+                <span>Tedarikçiler</span>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="header">
+            <h1 id="page-title">Dashboard</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="refresh-btn">🔄 Yenile</button>
+            </div>
+        </header>
+
+        <!-- Dashboard Page -->
+        <section id="dashboard-page" class="page active">
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="icon">📦</div>
+                    <div class="info">
+                        <h3 id="stat-products">0</h3>
+                        <p>Toplam Ürün</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon">🛒</div>
+                    <div class="info">
+                        <h3 id="stat-orders">0</h3>
+                        <p>Toplam Sipariş</p>
+                    </div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="icon">⚠️</div>
+                    <div class="info">
+                        <h3 id="stat-lowstock">0</h3>
+                        <p>Düşük Stok</p>
+                    </div>
+                </div>
+                <div class="stat-card success">
+                    <div class="icon">💰</div>
+                    <div class="info">
+                        <h3 id="stat-revenue">₺0</h3>
+                        <p>Toplam Gelir</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mağazaya Git Button -->
+            <div style="margin: 1.5rem 0;">
+                <a href="/store" target="_blank"
+                    style="display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 2rem; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; text-decoration: none; border-radius: 12px; font-size: 1.1rem; font-weight: 600; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); transition: transform 0.2s, box-shadow 0.2s;">
+                    <span style="font-size: 1.5rem;">🛍️</span>
+                    <span>Mağazaya Git</span>
+                    <span style="font-size: 1.2rem;">→</span>
+                </a>
+            </div>
+
+            <!-- Campaign Panel -->
+            <div class="campaign-panel">
+                <div class="panel-header">
+                    <h3>🔥 Kampanya Yönetimi</h3>
+                    <button class="btn btn-primary" onclick="showCampaignModal()">Yeni Kampanya Başlat</button>
+                </div>
+                <p>Kategorilere özel indirimler uygulayarak satışları artırabilirsiniz. Stoklar azalınca fiyatlar
+                    otomatik olarak yükselecektir.</p>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Kategori Dağılımı</h3>
+                    <canvas id="categoryChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Stok Durumu</h3>
+                    <canvas id="inventoryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Low Stock Table -->
+            <div class="table-card">
+                <h3>⚠️ Düşük Stoklu Ürünler</h3>
+                <ul class="list-group" id="low-stock-list">
+                    <!-- Javascript ile dolacak -->
+                </ul>
+            </div>
+        </section>
+
+        <!-- Products Page -->
+        <section id="products-page" class="page">
+            <div class="page-actions">
+                <button class="btn btn-success" onclick="showAddProductModal()">+ Yeni Ürün Ekle</button>
+            </div>
+            <div class="table-card">
+                <table id="products-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ürün Adı</th>
+                            <th>Kategori</th>
+                            <th>Tedarikçi</th>
+                            <th>Taban Fiyat</th>
+                            <th>Güncel Fiyat</th>
+                            <th>Stok</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Inventory Page -->
+        <section id="inventory-page" class="page">
+            <div class="table-card">
+                <table id="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ürün</th>
+                            <th>Stok Adedi</th>
+                            <th>Min. Eşik</th>
+                            <th>Max. Eşik</th>
+                            <th>Son Giriş</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Orders Page -->
+        <section id="orders-page" class="page">
+            <div class="table-card">
+                <table id="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Sipariş No</th>
+                            <th>Müşteri</th>
+                            <th>Ürünler</th>
+                            <th>Tedarikçiler</th>
+                            <th>Adres</th>
+                            <th>Tarih</th>
+                            <th>Durum</th>
+                            <th>Tutar</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Price History Page -->
+        <section id="price-history-page" class="page">
+            <div class="table-card">
+                <table id="price-history-table">
+                    <thead>
+                        <tr>
+                            <th>Ürün</th>
+                            <th>Eski Fiyat</th>
+                            <th>Yeni Fiyat</th>
+                            <th>Değişim</th>
+                            <th>Sebep</th>
+                            <th>Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Users Page -->
+        <section id="users-page" class="page">
+            <div class="table-card">
+                <table id="users-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ad Soyad</th>
+                            <th>Email</th>
+                            <th>Rol</th>
+                            <th>Telefon</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Suppliers Page -->
+        <section id="suppliers-page" class="page">
+            <div class="table-card">
+                <table id="suppliers-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Şirket Adı</th>
+                            <th>Email</th>
+                            <th>Vergi No</th>
+                            <th>Adres</th>
+                            <th>Ürün Sayısı</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Price Chart Modal -->
+    <div class="modal" id="chart-modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="chart-modal-title">Fiyat Geçmişi</h2>
+                <span class="close-btn" onclick="closeChartModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <canvas id="productPriceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Campaign Modal -->
+    <div class="modal" id="campaign-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Kampanya Başlat</h2>
+                <span class="close-btn" onclick="closeCampaignModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="campaign-modal-body">
+                <!-- Form JS ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2 id="modal-title">Modal</h2>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
